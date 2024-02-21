@@ -47,8 +47,6 @@ multi-producer exactly the number of tasks
 
 Industry standard - where does the threading logic lives? is it in the controller or the view? 
 Is there a difference using sentinel or using queue.join()?
-Do I even need a join if i have a sentinel? since the consumer would just be linked
-
 """
 #
 # def get_word_count(q, url):
@@ -87,7 +85,7 @@ Do I even need a join if i have a sentinel? since the consumer would just be lin
 
 """
 Threading method
-Using single producer and multiple consumer
+Using single producer and multiple consumer, using join and sentinel
 """
 
 
@@ -100,6 +98,9 @@ def get_word_count(q, word_count):
     while True:
         try:
             url = q.get(timeout=0.1)
+            if not url:
+                q.put(None)
+                break
 
             r = requests.get(url)
             if not r.ok:
@@ -122,9 +123,13 @@ if __name__ == "__main__":
         consumer = threading.Thread(target=get_word_count, args=(q, word_count))
         consumer.start()
 
-    q.join() # wait for queue is empty
+    print('everything starting')
+    producer.join()
+    print('producer ended')
+    q.join()  # wait for queue is empty
+    print('queue ended')
+    q.put(None)  # kill the consumer threads
 
     print(word_count)
     print(f'time: {time.time() - start_time}')
     print(q.qsize())
-
